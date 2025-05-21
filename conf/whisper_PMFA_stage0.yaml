@@ -1,7 +1,7 @@
 ### train configuraton
 
 exp_dir: exp/Whisper_PMFA_large_v2_voxceleb1_mel_5s
-gpus: "[0,1]"
+gpus: "[0]"
 num_avg: 1
 enable_amp: False # whether enable automatic mixed precision training
 
