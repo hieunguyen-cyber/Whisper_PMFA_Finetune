@@ -22,6 +22,7 @@ num_avg=1
 checkpoint=
 
 trials="vnceleb-e.kaldi vnceleb-h.kaldi"
+private_test_trials="prompts_sv.kaldi"
 
 score_norm_method="asnorm"  # asnorm/snorm
 top_n=300
@@ -134,22 +135,14 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then #Chuẩn hóa điểm (sc
     --trials "$trials"
 fi
 ###############============DONE===============################
-if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
-  echo "Extract embeddings and inference for private_test"
-
+if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then #Trích xuất embedding
   model_path=$exp_dir/models/final_model.pt
-
-  echo "Extracting embeddings for private_test..."
+  echo "Extract embeddings for private ..."
   local/extract_private.sh \
+    --exp_dir $exp_dir --model_path $model_path \
+    --nj 2 --gpus $gpus --data_type raw --data ${data}
+  local/score_private.sh \
     --exp_dir $exp_dir \
-    --model_path $model_path \
-    --nj 2 --gpus $gpus \
-    --data_type raw --data data/private_test
-
-  echo "Scoring private_test using score_private.sh..."
-  bash local/score_private.sh \
-    --exp_dir $exp_dir \
-    --data data/private_test \
-    --trials data/private_test/prompts_sv.kaldi \
-    --cal_mean false
+    --data ${data} \
+    --trials "$private_test_trials" 
 fi

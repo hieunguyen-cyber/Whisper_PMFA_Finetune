@@ -128,8 +128,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 
   echo "Prepare private_test trials ..."
   mkdir -p ${data}/private_test/trials
-  tail -n +2 ${rawdata_dir}/private_test/prompts_sv.csv | \
-    awk -F"," '{print $1, $2}' > ${data}/private_test/prompts_sv.kaldi
+  awk -F"," '{print $1, $2}' ${rawdata_dir}/private_test/prompts_sv.csv > ${data}/private_test/trials/prompts_sv.kaldi
 
   echo "Success !!!"
 fi
