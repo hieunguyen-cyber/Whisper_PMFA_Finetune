@@ -13,7 +13,7 @@ num_nodes=1
 job_id=2024
 
 data=data
-data_type="raw"  # shard/raw
+data_type="shard"  # shard/raw
 model=whisper_PMFA_large_v2
 
 exp_dir=exp/Whisper_PMFA_large_v2_vnceleb_mel_5s
@@ -48,8 +48,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then # stage 2: Tạo danh sá
           ${data}/$dset/wav.scp ${data}/$dset/utt2spk \
           ${data}/$dset/shards ${data}/$dset/shard.list
     else
-      python tools/make_raw_list.py ${data}/$dset/wav.scp \
-          ${data}/$dset/utt2spk ${data}/$dset/raw.list
+      python tools/make_shard_list.py ${data}/$dset/wav.scp \
+          ${data}/$dset/utt2spk ${data}/$dset/shard.list
     fi
   done
   # Convert all musan data to LMDB
@@ -111,7 +111,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then #Trích xuất embedding
   echo "Extract embeddings ..."
   local/extract_vnceleb.sh \
     --exp_dir $exp_dir --model_path $model_path \
-    --nj 2 --gpus $gpus --data_type raw --data ${data}
+    --nj 2 --gpus $gpus --data_type shard --data ${data}
 fi
 ###############============DONE===============################
 if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then #Tính điểm speaker verification
@@ -140,7 +140,7 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then #Trích xuất embedding
   echo "Extract embeddings for private ..."
   local/extract_private.sh \
     --exp_dir $exp_dir --model_path $model_path \
-    --nj 2 --gpus $gpus --data_type raw --data ${data}
+    --nj 2 --gpus $gpus --data_type shard --data ${data}
   local/score_private.sh \
     --exp_dir $exp_dir \
     --data ${data} \

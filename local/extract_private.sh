@@ -18,7 +18,7 @@ exp_dir=''
 model_path=''
 nj=4
 gpus="[0]"
-data_type="raw"  # shard/raw/feat
+data_type="shard"  # shard/raw/feat
 data=data
 
 . tools/parse_options.sh
