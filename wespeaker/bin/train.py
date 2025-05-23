@@ -59,7 +59,7 @@ def train(config='conf/config.yaml', **kwargs):
             os.makedirs(model_dir)
         except IOError:
             print("[warning] " + model_dir + " already exists !!!")
-            if checkpoint is None:
+            if checkpoint is None and config.endswith("stage1.yaml"):
                 print("[error] checkpoint is null !")
                 exit(1)
     dist.barrier(device_ids=[gpu])  # let the rank 0 mkdir first

@@ -1,6 +1,6 @@
 ### train configuraton
 
-exp_dir: exp/Whisper_PMFA_large_v2_voxceleb1_mel_5s
+exp_dir: exp/Whisper_PMFA_large_v2_vnceleb
 gpus: "[0]"
 num_avg: 1
 enable_amp: False # whether enable automatic mixed precision training
@@ -11,7 +11,7 @@ save_epoch_interval: 1 # save model every 5 epochs
 log_batch_interval: 100 # log every 100 batchs
 
 dataloader_args:
-  batch_size: 15
+  batch_size: 8
   num_workers: 12
   pin_memory: False
   prefetch_factor: 8

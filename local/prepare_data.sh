@@ -60,7 +60,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 
   echo "Decompress success !!!"
 fi
-
+###############=====================#######################=====================#######################=====================#######################=====================#######################
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
   echo "Prepare wav.scp for each dataset ..."
@@ -71,7 +71,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
   find ${rawdata_dir}/musan -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/musan/wav.scp
   # rirs
   find ${rawdata_dir}/RIRS_NOISES/simulated_rirs -name "*.wav" | awk -F"/" '{print $(NF-2)"/"$(NF-1)"/"$NF,$0}' >${data}/rirs/wav.scp
-
+###############=====================#######################
   # vnceleb train
   echo "Prepare vnceleb_train ..."
   mkdir -p ${data}/vnceleb_train
@@ -79,45 +79,82 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     sed 's/\r$//' | \
     tr -s '\t' ' ' | tr -s ' ' | \
     grep -v '^$' | \
-    awk -v base_dir=${rawdata_dir}/vnceleb/data 'NF >= 2 && $1 !~ /^$/ && $2 !~ /^$/ {
-      spk=$1; wav=$2;
-      utt_id=spk "/" wav;
-      path=base_dir "/" utt_id;
-      print utt_id, path;
-    }' | sort > ${data}/vnceleb_train/wav.scp
-  awk '{split($1, a, "/"); if (NF >= 2 && a[1] !~ /^$/) print $1, a[1]}' ${data}/vnceleb_train/wav.scp > ${data}/vnceleb_train/utt2spk
+    while read spk wav; do
+      utt_id="${spk}/${wav}"
+      path="${rawdata_dir}/vnceleb/full-dataset/data/${utt_id}"
+      if [ -f "$path" ]; then
+        echo "FOUND: $path"
+        echo "$utt_id $path" >> ${data}/vnceleb_train/wav.scp
+        echo "$utt_id $spk" >> ${data}/vnceleb_train/utt2spk
+      else
+        echo "MISSING: $path"
+      fi
+    done
   ./tools/utt2spk_to_spk2utt.pl ${data}/vnceleb_train/utt2spk > ${data}/vnceleb_train/spk2utt
-
-  # vnceleb test
-  echo "Prepare vnceleb_test trials ..."
+###############=====================#######################
+  # vnceleb train
+  echo "Prepare vnceleb_train ..."
   mkdir -p ${data}/vnceleb_test
   cat ${rawdata_dir}/vnceleb/vietnam-celeb-t.txt | \
     sed 's/\r$//' | \
     tr -s '\t' ' ' | tr -s ' ' | \
     grep -v '^$' | \
-    awk -v base_dir=${rawdata_dir}/vnceleb/data 'NF >= 2 && $1 !~ /^$/ && $2 !~ /^$/ {
-      spk=$1; wav=$2;
-      utt_id=spk "/" wav;
-      path=base_dir "/" utt_id;
-      print utt_id, path;
-    }' | sort > ${data}/vnceleb_test/wav.scp
-  awk '{split($1, a, "/"); if (NF >= 2 && a[1] !~ /^$/) print $1, a[1]}' ${data}/vnceleb_test/wav.scp > ${data}/vnceleb_test/utt2spk
+    while read spk wav; do
+      utt_id="${spk}/${wav}"
+      path="${rawdata_dir}/vnceleb/full-dataset/data/${utt_id}"
+      if [ -f "$path" ]; then
+        echo "FOUND: $path"
+        echo "$utt_id $path" >> ${data}/vnceleb_test/wav.scp
+        echo "$utt_id $spk" >> ${data}/vnceleb_test/utt2spk
+      else
+        echo "MISSING: $path"
+      fi
+    done
   ./tools/utt2spk_to_spk2utt.pl ${data}/vnceleb_test/utt2spk > ${data}/vnceleb_test/spk2utt
-  mkdir ${data}/vnceleb_test/trials
-  # Normalize tab/space, remove empty lines, and parse
-  cat ${rawdata_dir}/vnceleb/vietnam-celeb-e.txt | \
-    sed 's/\r$//' | \
-    tr -s '\t' ' ' | tr -s ' ' | \
-    grep -v '^$' | \
-    awk 'NF >= 3 && $1 ~ /^[0-1]$/ {print $2, $3, ($1 == "1" ? "target" : "nontarget")}' \
-    > ${data}/vnceleb_test/trials/vnceleb-e.kaldi
-  cat ${rawdata_dir}/vnceleb/vietnam-celeb-h.txt | \
-    sed 's/\r$//' | \
-    tr -s '\t' ' ' | tr -s ' ' | \
-    grep -v '^$' | \
-    awk 'NF >= 3 && $1 ~ /^[0-1]$/ {print $2, $3, ($1 == "1" ? "target" : "nontarget")}' \
-    > ${data}/vnceleb_test/trials/vnceleb-h.kaldi
-
+###############=====================#######################
+  mkdir -p ${data}/vnceleb_test/trials
+  # Kiểm tra tồn tại cặp audio rồi mới ghi vnceleb-e.kaldi
+  > ${data}/vnceleb_test/trials/vnceleb-e.kaldi
+  while read label utt1 utt2; do
+    path1="${rawdata_dir}/vnceleb/full-dataset/data/${utt1}"
+    path2="${rawdata_dir}/vnceleb/full-dataset/data/${utt2}"
+    if [ -f "$path1" ] && [ -f "$path2" ]; then
+      if [ "$label" = "1" ]; then
+        lbl="target"
+      elif [ "$label" = "0" ]; then
+        lbl="nontarget"
+      else
+        echo "SKIP (label error): $label $utt1 $utt2" >&2
+        continue
+      fi
+      echo "FOUND: $path1 $path2"
+      echo "$utt1 $utt2 $lbl" >> ${data}/vnceleb_test/trials/vnceleb-e.kaldi
+    else
+      echo "MISSING: $utt1 or $utt2" >&2
+    fi
+  done < <(cat ${rawdata_dir}/vnceleb/vietnam-celeb-e.txt | sed 's/\r$//' | tr -s '\t' ' ')
+###############=====================#######################
+  # Kiểm tra tồn tại cặp audio rồi mới ghi vnceleb-h.kaldi
+  > ${data}/vnceleb_test/trials/vnceleb-h.kaldi
+  while read label utt1 utt2; do
+    path1="${rawdata_dir}/vnceleb/full-dataset/data/${utt1}"
+    path2="${rawdata_dir}/vnceleb/full-dataset/data/${utt2}"
+    if [ -f "$path1" ] && [ -f "$path2" ]; then
+      if [ "$label" = "1" ]; then
+        lbl="target"
+      elif [ "$label" = "0" ]; then
+        lbl="nontarget"
+      else
+        echo "SKIP (label error): $label $utt1 $utt2" >&2
+        continue
+      fi
+      echo "FOUND: $path1 $path2"
+      echo "$utt1 $utt2 $lbl" >> ${data}/vnceleb_test/trials/vnceleb-h.kaldi
+    else
+      echo "MISSING: $utt1 or $utt2" >&2
+    fi
+  done < <(cat ${rawdata_dir}/vnceleb/vietnam-celeb-h.txt | sed 's/\r$//' | tr -s '\t' ' ')
+###############=====================#######################=====================#######################=====================#######################=====================#######################
   # private_test_sv
   echo "Prepare private_test ..."
   mkdir -p ${data}/private_test
@@ -132,4 +169,3 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 
   echo "Success !!!"
 fi
-

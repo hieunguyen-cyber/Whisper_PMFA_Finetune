@@ -1,1 +1,4 @@
 data
+exp
+**/__pycache__/
+*.pt
