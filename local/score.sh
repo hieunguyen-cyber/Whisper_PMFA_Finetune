@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exp_dir=
+exp_dir=exp/Whisper_PMFA_large_v2_vnceleb_mel_5s
 trials="vnceleb-e.kaldi vnceleb-h.kaldi"
 data=data
 
@@ -33,7 +33,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     python wespeaker/bin/score.py \
       --exp_dir ${exp_dir} \
       --eval_scp_path ${exp_dir}/embeddings/vnceleb_test/xvector.scp \
-      --cal_mean True \
+      --cal_mean False \
       --cal_mean_dir ${exp_dir}/embeddings/vnceleb_train \
       ${trials_dir}/${x}
   done

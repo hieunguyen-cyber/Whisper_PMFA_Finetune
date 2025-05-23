@@ -105,15 +105,23 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then # Huấn luyện stage 1 
       --checkpoint ${checkpoint}
 fi
 ###############============DONE===============################
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then #Trích xuất embedding
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then # Trích xuất embedding cho test
   model_path=$exp_dir/models/final_model.pt
-  echo "Extract embeddings ..."
+  echo "Extract embeddings for train set ..."
   local/extract_vnceleb.sh \
     --exp_dir $exp_dir --model_path $model_path \
-    --nj 2 --gpus $gpus --data_type raw --data ${data}
+    --nj 1 --gpus $gpus --data_type raw --data ${data} --stage train
 fi
 ###############============DONE===============################
-if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then #Tính điểm speaker verification
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then # Trích xuất embedding cho test
+  model_path=$exp_dir/models/final_model.pt
+  echo "Extract embeddings for test set ..."
+  local/extract_vnceleb.sh \
+    --exp_dir $exp_dir --model_path $model_path \
+    --nj 1 --gpus $gpus --data_type raw --data ${data} --stage test
+fi
+###############============DONE===============################
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then #Tính điểm speaker verification
   echo "Score ..."
   local/score.sh \
     --stage 1 --stop-stage 2 \
@@ -122,7 +130,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then #Tính điểm speaker ve
     --trials "$trials"
 fi
 ###############============DONE===============################
-if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then #Chuẩn hóa điểm (score normalization)
+if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then #Chuẩn hóa điểm (score normalization)
   echo "Score norm ..."
   local/score_norm.sh \
     --stage 1 --stop-stage 3 \
@@ -134,14 +142,9 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then #Chuẩn hóa điểm (sc
     --trials "$trials"
 fi
 ###############============DONE===============################
-if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then #Trích xuất embedding
+if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then #Trích xuất embedding
   model_path=$exp_dir/models/final_model.pt
   echo "Extract embeddings for private ..."
-  local/extract_private.sh \
-    --exp_dir $exp_dir --model_path $model_path \
-    --nj 2 --gpus $gpus --data_type raw --data ${data}
-  local/score_private.sh \
-    --exp_dir $exp_dir \
-    --data ${data} \
-    --trials "$private_test_trials" 
+  local/extract_private.sh 
+  python local/score_private.py
 fi

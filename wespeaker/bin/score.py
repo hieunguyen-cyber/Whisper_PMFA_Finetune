@@ -27,6 +27,8 @@ def calculate_mean_from_kaldi_vec(scp_path):
     mean_vec = None
 
     for _, vec in kaldiio.load_scp_sequential(scp_path):
+        if vec is None or not isinstance(vec, np.ndarray) or vec.size == 0:
+            continue
         if mean_vec is None:
             mean_vec = np.zeros_like(vec)
         mean_vec += vec
@@ -39,7 +41,7 @@ def trials_cosine_score(eval_scp_path='',
                         store_dir='',
                         mean_vec=None,
                         trials=()):
-    if mean_vec is None or not os.path.exists(mean_vec):
+    if mean_vec is None or not (isinstance(mean_vec, str) and os.path.exists(mean_vec)):
         mean_vec = 0.0
     else:
         mean_vec = np.load(mean_vec)
@@ -47,19 +49,32 @@ def trials_cosine_score(eval_scp_path='',
     # each embedding may be accessed multiple times, here we pre-load them
     # into the memory
     emb_dict = {}
-    for utt, emb in kaldiio.load_scp_sequential(eval_scp_path):
-        emb = emb - mean_vec
-        emb_dict[utt] = emb
+    try:
+        for utt, emb in kaldiio.load_scp_sequential(eval_scp_path):
+            if not isinstance(emb, np.ndarray) or emb.size == 0:
+                print(f"[WARN] Skipping invalid or empty vector for {utt}")
+                continue
+            emb = emb - mean_vec
+            emb_dict[utt] = emb
+    except Exception as e:
+        print(f"[ERROR] Failed to read eval_scp_path: {e}")
+        return
+
+    print(f"[INFO] Loaded {len(emb_dict)} embeddings from {eval_scp_path}")
 
     for trial in trials:
         store_path = os.path.join(store_dir,
                                   os.path.basename(trial) + '.score')
         with open(trial, 'r') as trial_r, open(store_path, 'w') as w_f:
             lines = trial_r.readlines()
+            print(f"[INFO] {len(lines)} trial pairs in {trial}")
             for line in tqdm(lines,
                              desc='scoring trial {}'.format(
                                  os.path.basename(trial))):
                 segs = line.strip().split()
+                if segs[0] not in emb_dict or segs[1] not in emb_dict:
+                    print(f"[WARN] Missing embedding for {segs[0]} or {segs[1]}, skipping.")
+                    continue
                 emb1, emb2 = emb_dict[segs[0]], emb_dict[segs[1]]
                 cos_score = cosine_similarity(emb1.reshape(1, -1),
                                               emb2.reshape(1, -1))[0][0]
@@ -70,12 +85,13 @@ def trials_cosine_score(eval_scp_path='',
                 else:  # enroll_name test_name
                     w_f.write('{} {} {:.5f}\n'.format(segs[0], segs[1],
                                                       cos_score))
+            print(f"[INFO] Finished scoring {trial}, wrote to {store_path}")
 
 
 def main(exp_dir, eval_scp_path, cal_mean, cal_mean_dir, *trials):
 
     print(cal_mean)
-    if not cal_mean:
+    if not cal_mean or cal_mean in ['False', 'false']:
         print("Do not do mean normalization for evaluation embeddings.")
         mean_vec_path = None
     else:
